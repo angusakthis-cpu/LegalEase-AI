@@ -7,10 +7,6 @@ DOCX_API_URL = "http://127.0.0.1:8000/api/download-docx"
 PDF_API_URL = "http://127.0.0.1:8000/api/download-pdf"
 
 
-# --------------------------------------------------
-# PAGE CONFIG
-# --------------------------------------------------
-
 st.set_page_config(
     page_title="LegalEase AI",
     page_icon="⚖️",
@@ -18,9 +14,9 @@ st.set_page_config(
 )
 
 
-# --------------------------------------------------
+# -----------------------------
 # CUSTOM CSS
-# --------------------------------------------------
+# -----------------------------
 
 st.markdown(
     """
@@ -58,9 +54,9 @@ st.markdown(
 )
 
 
-# --------------------------------------------------
+# -----------------------------
 # SESSION STATE
-# --------------------------------------------------
+# -----------------------------
 
 if "generated_document" not in st.session_state:
     st.session_state.generated_document = ""
@@ -69,9 +65,9 @@ if "document_type" not in st.session_state:
     st.session_state.document_type = ""
 
 
-# --------------------------------------------------
+# -----------------------------
 # TITLE
-# --------------------------------------------------
+# -----------------------------
 
 st.markdown(
     '<div class="main-title">⚖️ LegalEase AI</div>',
@@ -89,9 +85,9 @@ st.info(
 )
 
 
-# --------------------------------------------------
+# -----------------------------
 # DOCUMENT TYPE
-# --------------------------------------------------
+# -----------------------------
 
 st.markdown(
     '<div class="section-title">📄 Select Document Type</div>',
@@ -108,9 +104,9 @@ document_type = st.selectbox(
 )
 
 
-# --------------------------------------------------
+# -----------------------------
 # USER DETAILS
-# --------------------------------------------------
+# -----------------------------
 
 st.markdown(
     '<div class="section-title">📝 Enter Document Details</div>',
@@ -118,95 +114,70 @@ st.markdown(
 )
 
 details = st.text_area(
-    "Describe the required details",
+    "Document Details",
+    height=180,
     placeholder=(
         "Example:\n"
-        "Party A: ABC Company\n"
-        "Party B: John\n"
-        "Purpose: Confidential business information"
-    ),
-    height=220
+        "Party A: ABC Technologies Pvt Ltd\n"
+        "Party B: John Kumar\n"
+        "Purpose: Confidential business information\n"
+        "Effective Date: 29 September 2026\n"
+        "Confidentiality Period: 2 years"
+    )
 )
 
 
-# --------------------------------------------------
+# -----------------------------
 # GENERATE DOCUMENT
-# --------------------------------------------------
+# -----------------------------
 
-if st.button(
-    "⚡ Generate Document",
-    use_container_width=True
-):
+if st.button("⚡ Generate Document", use_container_width=True):
 
     if not details.strip():
-
-        st.warning(
-            "Please enter the document details."
-        )
-
+        st.warning("Please enter the document details.")
     else:
 
-        with st.spinner(
-            "Generating your legal document..."
-        ):
+        payload = {
+            "document_type": document_type,
+            "details": details
+        }
 
-            try:
+        try:
+
+            with st.spinner("Generating legal document..."):
 
                 response = requests.post(
                     API_URL,
-                    json={
-                        "document_type": document_type,
-                        "details": details
-                    },
-                    timeout=30
+                    json=payload,
+                    timeout=120
                 )
 
-                if response.status_code == 200:
+            if response.status_code == 200:
 
-                    result = response.json()
+                data = response.json()
 
-                    st.session_state.generated_document = (
-                        result["document"]
-                    )
+                generated_document = data.get("document", "")
 
-                    st.session_state.document_type = (
-                        document_type
-                    )
+                st.session_state.generated_document = generated_document
+                st.session_state.document_type = document_type
 
-                    st.success(
-                        "Document generated successfully! ✅"
-                    )
+                st.success("Document generated successfully! ✅")
 
-                else:
-
-                    st.error(
-                        f"API Error: {response.status_code}"
-                    )
-
-            except requests.exceptions.ConnectionError:
+            else:
 
                 st.error(
-                    "Cannot connect to LegalEase AI backend. "
-                    "Please make sure FastAPI is running."
+                    f"API Error: {response.status_code}\n\n"
+                    f"{response.text}"
                 )
 
-            except requests.exceptions.Timeout:
+        except requests.exceptions.RequestException as e:
 
-                st.error(
-                    "Request timed out. "
-                    "Gemini API may be unavailable or rate-limited."
-                )
-
-            except Exception as e:
-
-                st.error(
-                    f"Something went wrong: {e}"
-                )
+            st.error(f"Unable to connect to backend: {e}")
 
 
-# --------------------------------------------------
-# DISPLAY GENERATED DOCUMENT
-# --------------------------------------------------
+# -----------------------------
+# GENERATED DOCUMENT
+# -----------------------------
 
 if st.session_state.generated_document:
 
@@ -216,18 +187,17 @@ if st.session_state.generated_document:
     )
 
     edited_document = st.text_area(
-        "Review / Edit Document",
+        "Review and edit your document",
         value=st.session_state.generated_document,
-        height=600,
-        key="document_editor"
+        height=500
     )
 
     st.session_state.generated_document = edited_document
 
 
-    # --------------------------------------------------
-    # DOWNLOAD SECTION
-    # --------------------------------------------------
+    # -------------------------
+    # DOWNLOAD DOCUMENT
+    # -------------------------
 
     st.markdown(
         '<div class="section-title">⬇️ Download Document</div>',
@@ -235,132 +205,96 @@ if st.session_state.generated_document:
     )
 
 
-    # --------------------------------------------------
-    # TXT DOWNLOAD
-    # --------------------------------------------------
-
-    st.download_button(
-        label="📝 Download TXT",
-        data=edited_document,
-        file_name="LegalEase_Document.txt",
-        mime="text/plain",
-        use_container_width=True
-    )
+    col1, col2, col3 = st.columns(3)
 
 
-    # --------------------------------------------------
-    # DOCX DOWNLOAD
-    # --------------------------------------------------
+    # -------------------------
+    # DOCX
+    # -------------------------
 
-    try:
+    with col1:
 
-        docx_response = requests.post(
-            DOCX_API_URL,
-            json={
-                "document": edited_document
-            },
-            timeout=30
-        )
+        try:
 
-        if docx_response.status_code == 200:
-
-            st.download_button(
-                label="📄 Download DOCX",
-                data=docx_response.content,
-                file_name="LegalEase_Document.docx",
-                mime=(
-                    "application/vnd.openxmlformats-officedocument."
-                    "wordprocessingml.document"
-                ),
-                use_container_width=True
+            docx_response = requests.post(
+                DOCX_API_URL,
+                json={"document": edited_document},
+                timeout=60
             )
 
-        else:
+            if docx_response.status_code == 200:
 
-            st.error(
-                f"DOCX API Error: "
-                f"{docx_response.status_code}"
+                st.download_button(
+                    label="📄 Download DOCX",
+                    data=docx_response.content,
+                    file_name="LegalEase_Document.docx",
+                    mime=(
+                        "application/vnd.openxmlformats-officedocument."
+                        "wordprocessingml.document"
+                    ),
+                    use_container_width=True
+                )
+
+            else:
+
+                st.error("DOCX generation failed.")
+
+        except Exception as e:
+
+            st.error(f"DOCX error: {e}")
+
+
+    # -------------------------
+    # PDF
+    # -------------------------
+
+    with col2:
+
+        try:
+
+            pdf_response = requests.post(
+                PDF_API_URL,
+                json={"document": edited_document},
+                timeout=60
             )
 
-    except requests.exceptions.ConnectionError:
+            if pdf_response.status_code == 200:
 
-        st.error(
-            "Cannot connect to DOCX API."
-        )
+                st.download_button(
+                    label="📕 Download PDF",
+                    data=pdf_response.content,
+                    file_name="LegalEase_Document.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
 
-    except Exception as e:
+            else:
 
-        st.error(
-            f"DOCX error: {e}"
-        )
+                st.error("PDF generation failed.")
+
+        except Exception as e:
+
+            st.error(f"PDF error: {e}")
 
 
-    # --------------------------------------------------
-    # PDF DOWNLOAD
-    # --------------------------------------------------
+    # -------------------------
+    # TXT
+    # -------------------------
 
-    try:
+    with col3:
 
-        pdf_response = requests.post(
-            PDF_API_URL,
-            json={
-                "document": edited_document
-            },
-            timeout=30
-        )
-
-        if pdf_response.status_code == 200:
-
-            st.download_button(
-                label="📕 Download PDF",
-                data=pdf_response.content,
-                file_name="LegalEase_Document.pdf",
-                mime="application/pdf",
-                use_container_width=True
-            )
-
-        else:
-
-            st.error(
-                f"PDF API Error: "
-                f"{pdf_response.status_code}"
-            )
-
-    except requests.exceptions.ConnectionError:
-
-        st.error(
-            "Cannot connect to PDF API."
-        )
-
-    except Exception as e:
-
-        st.error(
-            f"PDF error: {e}"
+        st.download_button(
+            label="📝 Download TXT",
+            data=edited_document,
+            file_name="LegalEase_Document.txt",
+            mime="text/plain",
+            use_container_width=True
         )
 
 
-    # --------------------------------------------------
-    # CREATE NEW DOCUMENT
-    # --------------------------------------------------
-
-    st.markdown("---")
-
-    if st.button(
-        "🔄 Create New Document",
-        use_container_width=True
-    ):
-
-        st.session_state.generated_document = ""
-        st.session_state.document_type = ""
-
-        st.rerun()
-
-
-# --------------------------------------------------
-# FOOTER
-# --------------------------------------------------
-
-st.divider()
+# -----------------------------
+# DISCLAIMER
+# -----------------------------
 
 st.markdown(
     """

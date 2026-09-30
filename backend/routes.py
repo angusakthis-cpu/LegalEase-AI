@@ -3,9 +3,9 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 from io import BytesIO
 
-from ai_core.gemini_generator import generate_legal_document
-from document_utils.docx_generator import create_docx_file
-from document_utils.pdf_generator import create_pdf_file
+from backend.ai_core.gemini_generator import generate_legal_document
+from backend.document_utils.docx_generator import create_docx_file
+from backend.document_utils.pdf_generator import create_pdf_file
 
 
 router = APIRouter()
@@ -49,13 +49,9 @@ def download_docx(request: DocxRequest):
 
     return Response(
         content=output.getvalue(),
-        media_type=(
-            "application/vnd.openxmlformats-officedocument."
-            "wordprocessingml.document"
-        ),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={
-            "Content-Disposition":
-                'attachment; filename="LegalEase_Document.docx"'
+            "Content-Disposition": 'attachment; filename="LegalEase_Document.docx"'
         }
     )
 
@@ -69,7 +65,6 @@ def download_pdf(request: PdfRequest):
         content=pdf_data,
         media_type="application/pdf",
         headers={
-            "Content-Disposition":
-                'attachment; filename="LegalEase_Document.pdf"'
+            "Content-Disposition": 'attachment; filename="LegalEase_Document.pdf"'
         }
     )
